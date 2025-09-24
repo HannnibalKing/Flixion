@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily Enterprise Backup
+Requires=enterprise-backup.service
+
+[Timer]
+OnCalendar=daily
+RandomizedDelaySec=1800
+Persistent=true
+
+[Install]
+WantedBy=timers.target

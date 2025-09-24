@@ -1,0 +1,108 @@
+# Caddyfile for Enterprise Media Stack
+# Automatic HTTPS with Let's Encrypt integration
+# Security headers and reverse proxy configuration
+
+{
+    # Global settings
+    email admin@example.com
+    acme_ca https://acme-v02.api.letsencrypt.org/directory
+}
+
+# Main domain with authentication
+example.com {
+    # Security headers
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'"
+    }
+    
+    # Static files
+    handle_path /assets/* {
+        root * /var/www/assets
+        file_server
+    }
+    
+    # Default to service dashboard
+    reverse_proxy homer:8080
+}
+
+# Media server with authentication
+jellyfin.example.com {
+    # Forward auth to Authelia
+    forward_auth authelia:9091 {
+        uri /api/verify?rd=https://auth.example.com
+        copy_headers Remote-User Remote-Groups Remote-Name Remote-Email
+    }
+    
+    reverse_proxy jellyfin:8096 {
+        # WebSocket support for real-time features
+        header_up X-Real-IP {remote}
+        header_up X-Forwarded-For {remote}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+# Media requests with authentication
+requests.example.com {
+    forward_auth authelia:9091 {
+        uri /api/verify?rd=https://auth.example.com
+        copy_headers Remote-User Remote-Groups Remote-Name Remote-Email
+    }
+    
+    reverse_proxy jellyseerr:5055
+}
+
+# Authentication portal
+auth.example.com {
+    reverse_proxy authelia:9091 {
+        # Preserve original request information
+        header_up X-Real-IP {remote}
+        header_up X-Forwarded-For {remote}
+        header_up X-Forwarded-Proto {scheme}
+        header_up X-Forwarded-Host {host}
+        header_up X-Forwarded-Uri {uri}
+    }
+}
+
+# Admin services (restricted access)
+admin.example.com {
+    # Require admin group authentication
+    forward_auth authelia:9091 {
+        uri /api/verify?rd=https://auth.example.com
+        copy_headers Remote-User Remote-Groups Remote-Name Remote-Email
+    }
+    
+    # Service selection based on path
+    handle_path /radarr/* {
+        reverse_proxy radarr:7878
+    }
+    
+    handle_path /sonarr/* {
+        reverse_proxy sonarr:8989
+    }
+    
+    handle_path /prowlarr/* {
+        reverse_proxy prowlarr:9696
+    }
+    
+    handle_path /qbit/* {
+        reverse_proxy gluetun:8080
+    }
+    
+    # Default to service dashboard
+    reverse_proxy homer:8080
+}
+
+# Monitoring dashboard
+monitor.example.com {
+    forward_auth authelia:9091 {
+        uri /api/verify?rd=https://auth.example.com
+        copy_headers Remote-User Remote-Groups Remote-Name Remote-Email
+    }
+    
+    reverse_proxy netdata:19999
+}

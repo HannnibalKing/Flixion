@@ -1,0 +1,20 @@
+[Unit]
+Description=Enterprise Backup Service (Borg)
+Documentation=https://github.com/yourusername/homelab-portfolio
+After=network.target multi-user.target
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+ExecStart=/opt/backups/enterprise-backup.sh
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=enterprise-backup
+
+# Security settings
+NoNewPrivileges=yes
+ProtectHome=yes
+ProtectSystem=strict
+ReadWritePaths=/var/log /mnt/backups /mnt/docker /etc /home /var/lib/docker
+PrivateTmp=yes

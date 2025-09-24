@@ -1,0 +1,24 @@
+name: Docker Compose Validation
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Validate Docker Compose files
+      run: |
+        cd docker-stacks
+        docker-compose -f docker-compose-media-stack.yml config
+        docker-compose -f docker-compose-authelia.yml config
+    
+    - name: Validate shell scripts
+      run: |
+        find . -name "*.sh" -exec shellcheck {} \;
